@@ -6,39 +6,61 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import ta
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeRegressor
 
 def update_data():
-    # Определение тикера и периода времени
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     ticker = ticker_entry.get()
-    period = '1d'
+    period = '5d'
 
-    # Загрузка данных
-    data = yf.download(ticker, period=period, interval='1m')
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    data = yf.download(ticker, period=period, interval='1h')
 
-    # Проверка на пустоту данных
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     if data.empty:
         output_text.insert(tk.END, "No data available for this ticker.")
         return
 
-    # Вычисление скользящих средних
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    data.fillna(data.mean(), inplace=True)
+
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     data['MA5'] = data['Close'].rolling(window=5).mean()
     data['MA20'] = data['Close'].rolling(window=20).mean()
 
-    # Определение сигналов
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     data['Buy_Signal'] = np.where((data['MA5'] > data['MA20']), 1, 0)
     data['Sell_Signal'] = np.where((data['MA5'] < data['MA20']), 1, 0)
 
-    # Вычисление стоп-лосса
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅ
     data['std_dev'] = data['Close'].rolling(window=30).std()
     data['Stop_Loss'] = data['Close'] - 2 * data['std_dev']
 
-    # Вычисление тейк-профита
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     data['Take_Profit'] = data['Close'] + 2 * data['std_dev']
 
-    # Вычисление RSI
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ RSI
     data['RSI'] = ta.momentum.rsi(data['Close'], window=24)
 
-    # Проверка последнего сигнала
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    X = data[['Open', 'High', 'Low', 'Volume', 'RSI']]
+    y = data['Close']
+
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    model = DecisionTreeRegressor()
+    model.fit(X_train, y_train)
+
+    # пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    score = model.score(X_test, y_test)
+
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+    predictions = model.predict(X_test)
+
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     last_row = data.iloc[-1]
 
     output = ""
@@ -47,23 +69,25 @@ def update_data():
         output += "STOP LOSS: " + str(last_row['Stop_Loss']) + "\n"
         output += "TAKE PROFIT: " + str(last_row['Take_Profit']) + "\n"
         output += "RSI: " + str(last_row['RSI']) + "\n"
+        output += "Predicted Price: " + str(predictions[-1]) + "\n"
     elif last_row['Sell_Signal'] == 1:
         output += "SHORT\n"
         output += "STOP LOSS: " + str(last_row['Stop_Loss']) + "\n"
         output += "TAKE PROFIT: " + str(last_row['Take_Profit']) + "\n"
         output += "RSI: " + str(last_row['RSI']) + "\n"
+        output += "Predicted Price: " + str(predictions[-1]) + "\n"
     else:
         output += "NO\n"
 
-    # Вывод последних данных
+    # пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     output += str(data.tail())
 
-    # Очистка текстового поля и вывод новых данных
+    # пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     output_text.delete(1.0, tk.END)
     output_text.insert(tk.END, output)
 
-root = ThemedTk(theme="arc")  # Используем тему "arc", которая имеет современный вид без углов
-root.title("assistant trader")
+root = ThemedTk(theme="equilux")  # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ "equilux", пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
+root.title("Analytic App")
 root.geometry("800x600")
 
 style = {'font': ('Arial', 14)}
@@ -77,7 +101,8 @@ ticker_entry.pack(padx=10, pady=10)
 button = ttk.Button(root, text="Update Data", command=update_data)
 button.pack(padx=10, pady=10)
 
-output_text = tk.Text(root, font=style['font'], bg='light grey', fg='black')  # Изменяем цвет фона и текста
+output_text = tk.Text(root, font=style['font'], bg='light grey', fg='black')  # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 output_text.pack(padx=10, pady=10)
 
 root.mainloop()
+
